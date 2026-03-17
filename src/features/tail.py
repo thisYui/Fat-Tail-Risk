@@ -92,16 +92,22 @@ def hill_estimator(
     Tail index α càng nhỏ → đuôi càng dày (fat-tail).
     Phân phối chuẩn: α → ∞.
 
+    Formula (Hill 1975):
+        1/α = (1/k) * Σ_{i=1}^{k} [ln(X_{n-i+1}) - ln(X_{n-k})]
+    với X_{(1)} ≤ … ≤ X_{(n)} là order statistics của losses.
+
     Parameters
     ----------
-    returns    : chuỗi return (sẽ lấy giá trị tuyệt đối của phần âm)
+    returns    : chuỗi return thô (raw returns, có thể chứa cả giá trị âm
+                 và dương). Hàm tự động trích xuất left tail:
+                 losses = |r| với r < 0, sau đó sắp xếp giảm dần.
     k          : số quan sát đuôi dùng để ước lượng.
                  Nếu None → dùng k_fraction * n
     k_fraction : tỷ lệ đuôi (default 10%)
 
     Returns
     -------
-    float – ước lượng tail index α (> 0)
+    float – ước lượng tail index α (> 0), hoặc np.nan nếu dữ liệu không đủ.
 
     References
     ----------
@@ -109,15 +115,17 @@ def hill_estimator(
     the tail of a distribution. Ann. Statist., 3(5), 1163–1174.
     """
     r = pd.Series(returns).dropna()
-    losses = np.sort(np.abs(r[r < 0].values))[::-1]  # giảm dần
+    # Trích xuất left-tail losses: lấy |r| với r < 0, sắp xếp giảm dần
+    # (X_{(n)} ≥ X_{(n-1)} ≥ … — largest losses come first)
+    losses = np.sort(np.abs(r[r < 0].values))[::-1]
     n = len(losses)
     if n < 10:
         return np.nan
     if k is None:
         k = max(2, int(k_fraction * n))
     k = min(k, n - 1)
-    log_ratios = np.log(losses[:k]) - np.log(losses[k])
-    alpha_inv = np.mean(log_ratios)  # 1/α
+    log_ratios = np.log(losses[:k]) - np.log(losses[k])  # ln(X_{n-i+1}) - ln(X_{n-k})
+    alpha_inv = np.mean(log_ratios)  # = 1/α
     return float(1.0 / alpha_inv) if alpha_inv > 0 else np.nan
 
 
@@ -176,36 +184,53 @@ def tail_ratio(
 def mean_excess_function(
     returns: ArrayLike,
     n_thresholds: int = 50,
+    u_min_quantile: float = 0.50,
+    u_max_quantile: float = 0.99,
+    min_exceedances: int = 5,
 ) -> pd.DataFrame:
     """
     Tính Mean Excess Function (MEF) để chọn ngưỡng cho GPD/POT.
 
     MEF(u) = E[X - u | X > u]
 
-    Vùng ngưỡng tốt: MEF tuyến tính và tăng dần.
+    Vùng ngưỡng tốt: MEF tuyến tính và tăng dần → phù hợp GPD.
 
     Parameters
     ----------
-    returns      : chuỗi return (lấy losses = -return âm)
-    n_thresholds : số điểm ngưỡng
+    returns          : chuỗi return (lấy losses = |r| với r < 0)
+    n_thresholds     : số điểm ngưỡng trên grid (default 50)
+    u_min_quantile   : phân vị bắt đầu của grid ngưỡng (default 0.50).
+                       Tăng lên 0.60–0.70 nếu muốn tập trung vào tail xa hơn.
+    u_max_quantile   : phân vị kết thúc của grid (default 0.99).
+                       Không dùng 1.0 để tránh max observation (MEF=0).
+    min_exceedances  : số lượng exceedance tối thiểu để giữ lại điểm ngưỡng
+                       (default 5 — tránh ước lượng từ quá ít quan sát).
 
     Returns
     -------
     pd.DataFrame với cột ['threshold', 'mean_excess', 'n_exceedances']
     """
+    if not (0.0 <= u_min_quantile < u_max_quantile <= 1.0):
+        raise ValueError(
+            f"Cần 0 ≤ u_min_quantile < u_max_quantile ≤ 1, "
+            f"nhận được ({u_min_quantile}, {u_max_quantile})."
+        )
     r = pd.Series(returns).dropna()
     losses = np.abs(r[r < 0].values)
-    u_min, u_max = np.quantile(losses, 0.5), np.quantile(losses, 0.99)
+    if len(losses) == 0:
+        return pd.DataFrame(columns=["threshold", "mean_excess", "n_exceedances"])
+    u_min = float(np.quantile(losses, u_min_quantile))
+    u_max = float(np.quantile(losses, u_max_quantile))
     thresholds = np.linspace(u_min, u_max, n_thresholds)
     rows = []
     for u in thresholds:
         exceedances = losses[losses > u] - u
-        if len(exceedances) >= 5:
+        if len(exceedances) >= min_exceedances:
             rows.append(
                 {
                     "threshold": u,
                     "mean_excess": float(exceedances.mean()),
-                    "n_exceedances": len(exceedances),
+                    "n_exceedances": int(len(exceedances)),
                 }
             )
     return pd.DataFrame(rows)
@@ -292,7 +317,14 @@ def tail_quantile(
     Parameters
     ----------
     p : xác suất (0 < p < 1), ví dụ p=0.01 → 1st percentile
+
+    Raises
+    ------
+    ValueError
+        Nếu p không nằm trong khoảng (0, 1).
     """
+    if not (0.0 < p < 1.0):
+        raise ValueError(f"p phải nằm trong khoảng (0, 1), nhận được {p}.")
     r = pd.Series(returns).dropna().values
     return float(np.quantile(r, p))
 

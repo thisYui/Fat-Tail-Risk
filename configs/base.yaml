@@ -1,0 +1,126 @@
+# =============================================================================
+# configs/base.yaml
+# =============================================================================
+# Cấu hình gốc (base) – được kế thừa bởi tất cả các config khác.
+# Mọi giá trị ở đây đều có thể override trong config con.
+#
+# Cách dùng trong Python:
+#   from src.utils.config import load_config
+#   cfg = load_config("configs/base.yaml")
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Project metadata
+# -----------------------------------------------------------------------------
+project:
+  name: "fat-tail-risk"
+  version: "0.1.0"
+  description: "Fat-tail risk modelling: EVT, Copula, VaR/CVaR, Stress Testing"
+  author: "Quant Team"
+
+# -----------------------------------------------------------------------------
+# Paths
+# -----------------------------------------------------------------------------
+paths:
+  data_dir:       "data"
+  raw_dir:        "data/raw"
+  processed_dir:  "data/processed"
+  output_dir:     "outputs"
+  figures_dir:    "outputs/figures"
+  reports_dir:    "outputs/reports"
+  models_dir:     "outputs/models"
+  logs_dir:       "logs"
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+logging:
+  level: "INFO"               # DEBUG | INFO | WARNING | ERROR
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
+  log_to_file: true
+  log_file: "logs/fat_tail_risk.log"
+  max_bytes: 10_485_760       # 10 MB
+  backup_count: 5
+
+# -----------------------------------------------------------------------------
+# Market / data conventions
+# -----------------------------------------------------------------------------
+market:
+  trading_days_per_year: 252
+  trading_weeks_per_year: 52
+  trading_months_per_year: 12
+  default_currency: "USD"
+  return_type: "log"          # "log" | "simple"
+
+# -----------------------------------------------------------------------------
+# Random seed (reproducibility)
+# -----------------------------------------------------------------------------
+random:
+  seed: 42
+  numpy_seed: 42
+
+# -----------------------------------------------------------------------------
+# Confidence levels (dùng chung cho VaR, CVaR, stress test, backtest)
+# -----------------------------------------------------------------------------
+confidence:
+  levels: [0.90, 0.95, 0.99, 0.999]
+  default: 0.95
+  backtest_level: 0.99        # Basel yêu cầu 99%
+
+# -----------------------------------------------------------------------------
+# Risk-free rate
+# -----------------------------------------------------------------------------
+risk_free:
+  annual_rate: 0.05           # 5% annualised (thay đổi theo thị trường)
+  daily_rate: 0.000198        # ≈ 0.05 / 252
+
+# -----------------------------------------------------------------------------
+# Portfolio defaults
+# -----------------------------------------------------------------------------
+portfolio:
+  initial_value: 1_000_000    # USD
+  rebalance_freq: "monthly"   # "daily" | "weekly" | "monthly" | "quarterly"
+  transaction_cost: 0.001     # 10 bps per trade
+
+# -----------------------------------------------------------------------------
+# Data sources (dùng khi fetch dữ liệu thực)
+# -----------------------------------------------------------------------------
+data:
+  source: "yfinance"          # "yfinance" | "bloomberg" | "csv"
+  default_tickers:
+    - "SPY"
+    - "TLT"
+    - "GLD"
+    - "VIX"
+  default_start: "2005-01-01"
+  default_end:   "2024-12-31"
+  benchmark: "SPY"
+  frequency: "1d"             # "1d" | "1wk" | "1mo"
+
+# -----------------------------------------------------------------------------
+# Output / reporting
+# -----------------------------------------------------------------------------
+report:
+  format: ["html", "pdf"]     # "html" | "pdf" | "markdown"
+  author: "Fat-Tail-Risk System"
+  include_sections:
+    - "executive_summary"
+    - "return_analysis"
+    - "var_cvar"
+    - "tail_risk"
+    - "stress_test"
+    - "backtest"
+    - "drawdown"
+  figure_dpi: 120
+  figure_format: "png"        # "png" | "svg" | "pdf"
+
+# -----------------------------------------------------------------------------
+# Computation
+# -----------------------------------------------------------------------------
+compute:
+  n_jobs: -1                  # -1 = tất cả CPU cores
+  backend: "loky"             # joblib backend
+  chunk_size: 1000
+  use_cache: true
+  cache_dir: ".cache"

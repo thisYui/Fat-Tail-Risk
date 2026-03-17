@@ -1,0 +1,146 @@
+# =============================================================================
+# configs/evt.yaml
+# =============================================================================
+# Cấu hình cho Extreme Value Theory (EVT):
+#   - Peaks-Over-Threshold (POT) / Generalized Pareto Distribution (GPD)
+#   - Block Maxima / Generalized Extreme Value (GEV)
+#   - Threshold selection diagnostics
+#   - Return level estimation
+# =============================================================================
+
+_base: "configs/base.yaml"
+
+# -----------------------------------------------------------------------------
+# Method selection
+# -----------------------------------------------------------------------------
+method:
+  primary: "pot"              # "pot" (Peaks-Over-Threshold) | "bm" (Block Maxima)
+  run_both: true              # chạy cả hai để so sánh
+
+# -----------------------------------------------------------------------------
+# POT / GPD configuration
+# -----------------------------------------------------------------------------
+pot:
+  # Threshold selection
+  threshold:
+    method: "percentile"      # "percentile" | "std" | "manual"
+    percentile: 0.90          # dùng 90th percentile của losses
+    std_multiplier: 2.0       # nếu method="std": u = mean + k*std
+    manual_value: null        # nếu method="manual": giá trị cụ thể
+
+  # Minimum exceedances để fit GPD
+  min_exceedances: 20
+
+  # Tail side
+  side: "left"                # "left" (losses) | "right" (gains)
+
+  # GPD fitting
+  fit:
+    method: "mle"             # "mle" (Maximum Likelihood) | "pwm" (Prob Weighted Moments)
+    fix_loc: true             # cố định loc=0 (standard POT)
+    xi_bounds: [-0.5, 2.0]   # bounds cho shape parameter ξ
+
+  # Confidence intervals (bootstrap)
+  confidence_intervals:
+    enabled: true
+    n_bootstrap: 1000
+    alpha: 0.05               # 95% CI
+
+  # Diagnostics
+  diagnostics:
+    run_ks_test: true
+    run_ad_test: true         # Anderson-Darling
+    plot_qq: true
+    plot_mean_excess: true
+    plot_threshold_stability: true
+    n_threshold_grid: 50      # số điểm ngưỡng trong stability plot
+
+# -----------------------------------------------------------------------------
+# Block Maxima / GEV configuration
+# -----------------------------------------------------------------------------
+block_maxima:
+  block_size: 21              # 21 ngày = 1 tháng giao dịch
+  # Alternative sizes: 63 (quarterly), 126 (semi-annual), 252 (annual)
+  alternative_block_sizes: [21, 63, 252]
+
+  fit:
+    method: "mle"
+    xi_bounds: [-1.0, 2.0]
+
+  diagnostics:
+    plot_qq: true
+    plot_return_level: true
+
+# -----------------------------------------------------------------------------
+# Return level estimation
+# -----------------------------------------------------------------------------
+return_levels:
+  periods_years:              # chu kỳ T năm
+    - 1
+    - 2
+    - 5
+    - 10
+    - 25
+    - 50
+    - 100
+    - 200
+  trading_days_per_year: 252
+  confidence_alpha: 0.05      # 95% CI cho return level
+
+# -----------------------------------------------------------------------------
+# VaR / CVaR từ EVT
+# -----------------------------------------------------------------------------
+evt_risk:
+  confidence_levels: [0.95, 0.99, 0.999, 0.9999]
+  compute_cvar: true
+
+# -----------------------------------------------------------------------------
+# Hill estimator (tail index)
+# -----------------------------------------------------------------------------
+hill:
+  k_fraction: 0.10            # dùng 10% quan sát đuôi
+  k_min: 5
+  k_max_fraction: 0.30        # tối đa 30% cho Hill plot
+  plot: true
+
+# -----------------------------------------------------------------------------
+# Mean Excess Function
+# -----------------------------------------------------------------------------
+mef:
+  n_thresholds: 60
+  min_exceedances_per_threshold: 10
+  plot: true
+
+# -----------------------------------------------------------------------------
+# Threshold stability
+# -----------------------------------------------------------------------------
+threshold_stability:
+  n_thresholds: 50
+  min_exceedances: 20
+  parameters: ["xi", "sigma_star"]  # sigma_star = sigma - xi*u
+  plot: true
+
+# -----------------------------------------------------------------------------
+# Declustering (loại bỏ autocorrelation trong exceedances)
+# -----------------------------------------------------------------------------
+declustering:
+  enabled: false
+  method: "runs"              # "runs" | "intervals"
+  run_length: 3               # tối thiểu 3 ngày giữa các cluster
+  theta_interval: 0.8         # extremal index threshold
+
+# -----------------------------------------------------------------------------
+# Output
+# -----------------------------------------------------------------------------
+output:
+  dir: "outputs/evt"
+  save_gpd_params: true
+  save_return_levels: true
+  save_diagnostics: true
+  figures:
+    qq_plot: true
+    mean_excess: true
+    threshold_stability: true
+    return_level: true
+    hill_plot: true
+    tail_fit: true

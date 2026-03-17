@@ -1,0 +1,135 @@
+# =============================================================================
+# configs/copula.yaml
+# =============================================================================
+# Cấu hình cho mô hình Copula – cấu trúc phụ thuộc giữa các tài sản:
+#   - Gaussian Copula (no tail dependence)
+#   - Student-t Copula (symmetric tail dependence)
+#   - Archimedean: Clayton (lower), Gumbel (upper), Frank (symmetric)
+#   - Vine Copula (pair-copula constructions) – nếu mở rộng
+# =============================================================================
+
+_base: "configs/base.yaml"
+
+# -----------------------------------------------------------------------------
+# Assets cần phân tích phụ thuộc
+# -----------------------------------------------------------------------------
+assets:
+  tickers:
+    - "SPY"                   # US Equity
+    - "TLT"                   # Long-term Bonds
+    - "GLD"                   # Gold
+    - "EEM"                   # Emerging Markets
+    - "VNM"                   # Vietnam ETF (tuỳ chọn)
+  pairs:                      # các cặp cụ thể cần phân tích chi tiết
+    - ["SPY", "TLT"]
+    - ["SPY", "GLD"]
+    - ["SPY", "EEM"]
+
+# -----------------------------------------------------------------------------
+# Pseudo-observations (CDF transform)
+# -----------------------------------------------------------------------------
+pseudo_obs:
+  method: "empirical"         # "empirical" (rank-based) | "parametric"
+  adjust: 0.5                 # Hazen formula: rank / (n + 1) khi adjust=0.5
+  marginal_dist: "empirical"  # phân phối biên: "empirical" | "normal" | "student_t"
+
+# -----------------------------------------------------------------------------
+# Families cần fit và so sánh
+# -----------------------------------------------------------------------------
+families:
+  run_all: true               # fit tất cả families
+  active:
+    - "gaussian"
+    - "student_t"
+    - "clayton"
+    - "gumbel"
+    - "frank"
+
+  # Giới hạn tham số
+  parameter_bounds:
+    student_t:
+      df_min: 2.0
+      df_max: 50.0
+    clayton:
+      theta_min: 0.01
+      theta_max: 50.0
+    gumbel:
+      theta_min: 1.001
+      theta_max: 20.0
+    frank:
+      theta_min: -40.0
+      theta_max: 40.0
+
+# -----------------------------------------------------------------------------
+# Model selection
+# -----------------------------------------------------------------------------
+selection:
+  criterion: "aic"            # "aic" | "bic" | "loglik"
+  # Nếu best copula có AIC cách biệt < threshold với runner-up,
+  # dùng mixture hoặc báo cáo cả hai.
+  aic_diff_threshold: 5.0
+
+# -----------------------------------------------------------------------------
+# Tail dependence analysis
+# -----------------------------------------------------------------------------
+tail_dependence:
+  quantiles: [0.01, 0.05, 0.10]   # ngưỡng đuôi để tính λ_L, λ_U
+  empirical: true                  # tính thực nghiệm
+  theoretical: true                # tính từ copula đã fit
+  plot_scatter: true               # scatter plot màu sắc đuôi
+
+# -----------------------------------------------------------------------------
+# Simulation từ copula đã fit
+# -----------------------------------------------------------------------------
+simulation:
+  n_samples: 50_000
+  seed: 42
+  # Sau khi sinh copula samples, transform ngược về phân phối biên
+  marginal_transform: "empirical"  # "empirical" | "parametric"
+
+# -----------------------------------------------------------------------------
+# Goodness-of-fit tests
+# -----------------------------------------------------------------------------
+gof:
+  run_ks_test: true
+  run_rosenblatt: true        # Rosenblatt probability integral transform
+  n_bootstrap_gof: 200        # bootstrap cho p-value GOF test
+
+# -----------------------------------------------------------------------------
+# Kendall's tau matrix
+# -----------------------------------------------------------------------------
+kendall:
+  compute: true
+  plot_heatmap: true
+  compare_theoretical: true   # so sánh Kendall's tau với tham số copula
+
+# -----------------------------------------------------------------------------
+# Conditional distributions (stress)
+# -----------------------------------------------------------------------------
+conditional:
+  enabled: true
+  # P(Asset_i < q_i | Asset_j < q_j) – xác suất joint tail
+  joint_tail_levels: [0.01, 0.05, 0.10]
+
+# -----------------------------------------------------------------------------
+# Vine Copula (pair-copula constructions) – phần mở rộng
+# -----------------------------------------------------------------------------
+vine:
+  enabled: false              # bật khi có nhiều hơn 3 tài sản
+  structure: "C-vine"         # "C-vine" | "D-vine" | "R-vine"
+  truncation_level: null      # null = không truncate
+
+# -----------------------------------------------------------------------------
+# Output
+# -----------------------------------------------------------------------------
+output:
+  dir: "outputs/copula"
+  save_params: true
+  save_samples: false         # samples lớn, tắt mặc định
+  save_comparison: true
+  figures:
+    scatter_pairs: true
+    density_contour: true
+    tail_dependence_heatmap: true
+    kendall_heatmap: true
+    copula_comparison_bar: true

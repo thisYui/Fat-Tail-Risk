@@ -1,0 +1,269 @@
+# =============================================================================
+# configs/risk.yaml
+# =============================================================================
+# Cấu hình cho RiskPipeline:
+#   - VaR / CVaR models
+#   - Stress testing
+#   - Backtesting (Kupiec, Christoffersen, Basel)
+#   - Risk metrics (Sharpe, Sortino, Calmar, ...)
+#   - Portfolio risk decomposition
+# =============================================================================
+
+_base: "configs/base.yaml"
+
+# -----------------------------------------------------------------------------
+# Portfolio
+# -----------------------------------------------------------------------------
+portfolio:
+  value: 1_000_000            # giá trị danh mục (USD)
+  currency: "USD"
+  benchmark: "SPY"
+
+# -----------------------------------------------------------------------------
+# VaR models
+# -----------------------------------------------------------------------------
+var:
+  confidence_levels: [0.90, 0.95, 0.99]
+  default_confidence: 0.95
+  horizon_days: 1             # VaR 1-ngày (scale lên bằng sqrt rule)
+  scale_horizons: [1, 5, 10, 21]  # các horizon cần scale
+
+  methods:
+    historical_simulation:
+      enabled: true
+      window: 252             # rolling window (ngày)
+
+    parametric_normal:
+      enabled: true
+
+    parametric_student_t:
+      enabled: true
+
+    cornish_fisher:
+      enabled: true           # Modified VaR (điều chỉnh skew/kurtosis)
+
+    garch_normal:
+      enabled: true
+      omega: 0.000001
+      alpha: 0.09
+      beta: 0.90
+
+    garch_student_t:
+      enabled: true
+      omega: 0.000001
+      alpha: 0.09
+      beta: 0.90
+
+    filtered_hs:
+      enabled: true           # FHS = GARCH + bootstrap residuals
+      omega: 0.000001
+      alpha: 0.09
+      beta: 0.90
+
+    evt_pot:
+      enabled: true           # EVT-VaR từ GPD fit
+      threshold_quantile: 0.90
+
+# -----------------------------------------------------------------------------
+# CVaR / Expected Shortfall
+# -----------------------------------------------------------------------------
+cvar:
+  confidence_levels: [0.90, 0.95, 0.99]
+  default_confidence: 0.95
+
+  methods:
+    historical:
+      enabled: true
+      window: 252
+
+    parametric_normal:
+      enabled: true
+
+    parametric_student_t:
+      enabled: true
+
+    garch_normal:
+      enabled: true
+
+    filtered_hs:
+      enabled: true
+
+    evt_pot:
+      enabled: true
+
+  # Component CVaR (Euler allocation)
+  component_cvar:
+    enabled: true             # chỉ áp dụng với portfolio nhiều tài sản
+
+# -----------------------------------------------------------------------------
+# Risk metrics
+# -----------------------------------------------------------------------------
+metrics:
+  freq: 252                   # số kỳ / năm để annualise
+  risk_free_annual: 0.05      # lãi suất phi rủi ro (5%)
+  mar: 0.0                    # Minimum Acceptable Return cho Sortino
+
+  compute:
+    sharpe: true
+    sortino: true
+    calmar: true
+    omega: true
+    information_ratio: true   # cần benchmark returns
+    tail_ratio: true
+    gain_to_pain: true
+    entropic_var: true
+    tail_gini: true
+
+  rolling:
+    enabled: true
+    windows: [21, 63, 126, 252]     # rolling windows (ngày)
+    metrics: ["sharpe", "vol", "var_95", "cvar_95"]
+
+# -----------------------------------------------------------------------------
+# Stress testing
+# -----------------------------------------------------------------------------
+stress:
+
+  # Historical stress periods
+  historical:
+    enabled: true
+    periods:
+      dot_com:       ["2000-03-01", "2002-10-31"]
+      gfc:           ["2008-07-01", "2009-03-31"]
+      eu_debt:       ["2011-07-01", "2011-12-31"]
+      china_crash:   ["2015-06-01", "2016-02-29"]
+      covid_crash:   ["2020-02-01", "2020-03-31"]
+      ukraine_war:   ["2022-01-01", "2022-03-31"]
+      rate_selloff:  ["2022-01-01", "2022-12-31"]
+
+  # Parametric scenarios (từ CRISIS_SCENARIOS)
+  parametric:
+    enabled: true
+    scenarios:
+      - "base"
+      - "dot_com_2000"
+      - "gfc_2008"
+      - "covid_2020"
+      - "ukraine_war_2022"
+      - "stagflation"
+      - "black_swan"
+    horizon_months: 1         # 1 tháng = ~21 ngày
+
+  # Factor-based stress
+  factor:
+    enabled: false            # bật khi có factor returns
+    shocks:
+      - "equity_crash"
+      - "rate_hike"
+      - "credit_crisis"
+      - "oil_spike"
+
+  # Monte Carlo stress (bootstrap forward)
+  monte_carlo:
+    enabled: true
+    n_simulations: 10_000
+    horizon_days: 21          # 1 tháng
+    seed: 42
+
+  # Sensitivity analysis
+  sensitivity:
+    enabled: true
+    confidence_grid_start: 0.80
+    confidence_grid_end: 0.9999
+    confidence_grid_steps: 50
+
+  # Reverse stress test
+  reverse:
+    enabled: true
+    loss_thresholds:          # % of portfolio value
+      - 0.05                  # -5%
+      - 0.10                  # -10%
+      - 0.20                  # -20%
+      - 0.30                  # -30%
+
+# -----------------------------------------------------------------------------
+# Backtesting
+# -----------------------------------------------------------------------------
+backtest:
+  confidence: 0.99            # Basel yêu cầu 99%
+  rolling_window: 252         # cửa sổ train (ngày)
+  min_obs: 500                # tối thiểu quan sát để backtest
+  step: 1                     # bước nhảy (1 = daily refit)
+
+  # Models cần backtest
+  models:
+    - "hs"
+    - "parametric_normal"
+    - "parametric_t"
+    - "garch_normal"
+    - "garch_t"
+    - "filtered_hs"
+
+  # Tests thống kê
+  tests:
+    kupiec:
+      enabled: true
+      alpha: 0.05             # significance level
+
+    christoffersen:
+      enabled: true
+      alpha: 0.05
+
+    conditional_coverage:
+      enabled: true
+      alpha: 0.05
+
+    binomial:
+      enabled: true
+
+  # ES backtesting
+  es_backtest:
+    enabled: true
+    method: "mcneil_frey"     # "mcneil_frey" | "bootstrap"
+    n_bootstrap: 1000
+
+  # Basel traffic light
+  basel:
+    enabled: true
+    observation_days: 250     # 1 năm giao dịch
+
+# -----------------------------------------------------------------------------
+# Portfolio risk decomposition
+# -----------------------------------------------------------------------------
+decomposition:
+  enabled: false              # bật khi có nhiều tài sản
+  methods:
+    component_var: true
+    marginal_var: true
+    percentage_contribution: true
+    risk_parity: true
+  confidence: 0.95
+  delta: 0.0001               # perturbation cho numerical gradient
+
+# -----------------------------------------------------------------------------
+# Drawdown analysis
+# -----------------------------------------------------------------------------
+drawdown:
+  compute_series: true
+  top_n_drawdowns: 10         # top N drawdown periods
+  recovery_analysis: true     # thời gian phục hồi
+
+# -----------------------------------------------------------------------------
+# Output
+# -----------------------------------------------------------------------------
+output:
+  dir: "outputs/risk"
+  save_metrics: true
+  save_var_comparison: true
+  save_cvar_comparison: true
+  save_stress_report: true
+  save_backtest_report: true
+  save_rolling_var: true
+  figures:
+    performance_dashboard: true
+    rolling_var: true
+    var_cvar_distribution: true
+    backtest_violations: true
+    stress_bar_chart: true
+    var_sensitivity: true
+    drawdown: true

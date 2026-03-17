@@ -67,29 +67,35 @@ def std(returns: ArrayLike, annualise: bool = False, freq: int = 252) -> float:
 
 def skewness(returns: ArrayLike) -> float:
     """
-    Tính skewness (độ lệch).
+    Tính skewness (độ lệch) - unbiased sample estimator.
     - Dương → đuôi phải dài (right-skewed)
     - Âm  → đuôi trái dài (left-skewed, phổ biến với tài sản tài chính)
     """
     r = pd.Series(returns).dropna()
-    return float(stats.skew(r))
+    return float(stats.skew(r, bias=False))
 
 
 def kurtosis(returns: ArrayLike, excess: bool = True) -> float:
     """
-    Tính kurtosis của phân phối.
+    Tính kurtosis của phân phối - unbiased sample estimator.
 
     Parameters
     ----------
     excess : True (default) → excess kurtosis = kurtosis - 3
              (phân phối chuẩn = 0; fat-tail > 0)
+             False → raw kurtosis (phân phối chuẩn ≈ 3)
 
     Notes
     -----
-    Scipy dùng excess kurtosis theo mặc định (fisher=True).
+    scipy.stats.kurtosis(fisher=True)  → excess kurtosis  (kurtosis − 3)
+    scipy.stats.kurtosis(fisher=False) → raw kurtosis
+    ``excess`` param được truyền thẳng vào ``fisher`` vì mapping 1-1:
+      excess=True  ↔ fisher=True  → trả excess kurtosis
+      excess=False ↔ fisher=False → trả raw kurtosis
     """
     r = pd.Series(returns).dropna()
-    k = float(stats.kurtosis(r, fisher=excess))
+    # bias=False: dùng unbiased sample estimator (khuyến nghị với n nhỏ)
+    k = float(stats.kurtosis(r, fisher=excess, bias=False))
     return k
 
 

@@ -77,10 +77,19 @@ def student_t(
 
     Parameters
     ----------
-    df    : degrees of freedom (> 0)
+    df    : degrees of freedom (> 0). Khuyến nghị df > 2 để variance tồn tại.
     mu    : location
-    sigma : scale
+    sigma : scale (> 0)
+
+    Raises
+    ------
+    ValueError
+        Nếu df ≤ 0 hoặc sigma ≤ 0.
     """
+    if df <= 0:
+        raise ValueError(f"df phải > 0, nhận được df={df}.")
+    if sigma <= 0:
+        raise ValueError(f"sigma phải > 0, nhận được sigma={sigma}.")
     rng = np.random.default_rng(seed)
     z = rng.standard_t(df=df, size=n)
     return mu + sigma * z
@@ -127,33 +136,57 @@ def skewed_student_t(
     seed: Optional[int] = None,
 ) -> np.ndarray:
     """
-    Sinh n mẫu từ Skewed Student-t (Hansen 1994).
+    Sinh n mẫu từ Skewed Student-t theo phương pháp Fernandez & Steel (1998).
 
-    Kết hợp fat-tail (df) và bất đối xứng (skew).
+    Kết hợp fat-tail (df) và bất đối xứng (skew) bằng cách scale riêng
+    hai nhánh của phân phối t-Student chuẩn.
 
     Parameters
     ----------
-    df   : degrees of freedom (> 2)
-    skew : tham số lệch, thường trong (-1, 1).
-           skew < 0 → lệch trái (phổ biến với tài chính)
+    df   : degrees of freedom (> 2, bắt buộc để moment bậc 2 tồn tại)
+    skew : log-scale asymmetry parameter (thực số bất kỳ; default 0 = symmetric).
+           skew < 0 → lệch trái (downside tail nặng hơn — phổ biến với tài chính)
+           skew > 0 → lệch phải
+           |skew| nhỏ (< 1) cho phân phối có ý nghĩa thực tế nhất.
+    mu    : location
+    sigma : scale (> 0)
+
+    Notes
+    -----
+    **Không phải** Hansen (1994) parameterisation (lambda ∈ (−1, 1)).
+    Phương pháp này dùng gamma = exp(skew) để encode asymmetry:
+      - gamma > 1 (skew > 0) → nhánh phải scale lớn hơn → lệch phải
+      - gamma < 1 (skew < 0) → nhánh trái scale nhỏ hơn → lệch trái
+      - gamma = 1 (skew = 0) → phân phối t-Student đối xứng
+
+    References
+    ----------
+    Fernandez, C. & Steel, M. F. J. (1998). On Bayesian modeling of fat tails
+    and skewness. JASA, 93(441), 359–371.
     """
+    if df <= 2:
+        raise ValueError(f"df phải > 2 để variance tồn tại, nhận được df={df}.")
+    if sigma <= 0:
+        raise ValueError(f"sigma phải > 0, nhận được sigma={sigma}.")
+
     rng = np.random.default_rng(seed)
-    # Dùng scipy.stats.t + biến đổi scale bất đối xứng
-    # Phương pháp: Fernandez & Steel (1998) two-piece scale
     u = rng.uniform(0, 1, size=n)
-    # Tính ngưỡng phân chia hai nhánh
-    gamma = np.exp(skew)          # gamma > 1 → lệch phải, < 1 → lệch trái
-    cut = gamma / (gamma + 1 / gamma)
+
+    # gamma = exp(skew): hệ số scale bất đối xứng
+    # gamma > 1 → nhánh phải rộng hơn; gamma < 1 → nhánh trái rộng hơn
+    gamma = np.exp(skew)
+    # cut = điểm phân chia xác suất: P(nhánh trái) = cut
+    cut = gamma / (gamma + 1.0 / gamma)
 
     left_mask = u < cut
     samples = np.empty(n)
 
-    # Nhánh trái: scale = 1/gamma
+    # Nhánh trái (u < cut): scale = 1/gamma → đuôi trái hẹp hơn khi gamma > 1
     p_left = u[left_mask] / cut
     samples[left_mask] = stats.t.ppf(p_left / 2, df=df) / gamma
 
-    # Nhánh phải: scale = gamma
-    p_right = (u[~left_mask] - cut) / (1 - cut)
+    # Nhánh phải (u >= cut): scale = gamma → đuôi phải rộng hơn khi gamma > 1
+    p_right = (u[~left_mask] - cut) / (1.0 - cut)
     samples[~left_mask] = stats.t.ppf(0.5 + p_right / 2, df=df) * gamma
 
     return mu + sigma * samples
@@ -225,22 +258,30 @@ def generalized_pareto(
     seed: Optional[int] = None,
 ) -> np.ndarray:
     """
-    Sinh n mẫu từ Generalized Pareto Distribution (GPD).
+    Sinh n mẫu từ Generalized Pareto Distribution (GPD) bằng inverse-CDF.
 
     Dùng trong mô hình Peaks-Over-Threshold (POT/EVT).
 
     Parameters
     ----------
     xi    : shape parameter (tail index).
-            xi > 0 → Pareto (fat-tail)
-            xi = 0 → Exponential
-            xi < 0 → Bounded distribution
-    mu    : location (threshold u trong POT)
-    sigma : scale (> 0)
+            xi > 0 → Pareto (fat-tail, heavy).
+            xi = 0 → Exponential (handled via limit).
+            xi < 0 → Bounded distribution (light tail).
+    mu    : location — thường là threshold u trong mô hình POT.
+    sigma : scale (> 0).
+
+    Raises
+    ------
+    ValueError
+        Nếu sigma ≤ 0.
     """
+    if sigma <= 0:
+        raise ValueError(f"sigma phải > 0, nhận được sigma={sigma}.")
     rng = np.random.default_rng(seed)
     u = rng.uniform(0, 1, size=n)
     if np.isclose(xi, 0.0):
+        # Giới hạn xi → 0: GPD → Exponential(scale=sigma)
         return mu - sigma * np.log(u)
     return mu + sigma * (u ** (-xi) - 1) / xi
 
