@@ -1,0 +1,26 @@
+# Data
+yfinance
+pandas-datareader
+pandas
+numpy
+
+# Statistics & Modeling
+scipy
+statsmodels
+arch            # GARCH models
+pymc            # Bayesian EVT
+
+# Fat-tail specific
+evt             # Extreme Value Theory
+copulas         # Copula modeling
+
+# Visualization
+matplotlib
+seaborn
+plotly
+
+# Dev
+jupyter
+pytest
+python-dotenv
+pyyaml
