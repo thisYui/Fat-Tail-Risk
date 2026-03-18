@@ -266,6 +266,23 @@ from .visualization import (
 )
 
 # ---------------------------------------------------------------------------
+# utils / config
+# ---------------------------------------------------------------------------
+from .utils import (
+    load_yaml,
+    load_config,
+    load_all_configs,
+    merge_configs,
+    ConfigNamespace,
+    namespace,
+    validate_config,
+    build_simulation_config,
+    build_modeling_config,
+    build_risk_config,
+)
+
+# ---------------------------------------------------------------------------
+# pipelines
 # pipelines
 # ---------------------------------------------------------------------------
 from .pipelines import (
@@ -376,6 +393,11 @@ __all__ = [
     "plot_threshold_stability", "plot_backtest_violations",
     "plot_scenario_fan", "plot_tail_dependence", "plot_scenario_comparison",
     "ReportSection", "RiskReport", "generate_full_report",
+
+    # ── utils / config ────────────────────────────────────────────────
+    "load_yaml", "load_config", "load_all_configs", "merge_configs",
+    "ConfigNamespace", "namespace", "validate_config",
+    "build_simulation_config", "build_modeling_config", "build_risk_config",
 
     # ── pipelines ─────────────────────────────────────────────────────
     "SimulationPipeline", "SimulationConfig",
