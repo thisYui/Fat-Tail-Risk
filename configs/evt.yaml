@@ -1,0 +1,25 @@
+# configuration for extreme value theory (EVT) and tail index estimation
+tail_estimation:
+  tail: "right"  # "right" or "left" (for losses vs returns)
+  
+  hill_estimator:
+    k_heuristic: "sqrt_n" # "sqrt_n" or custom integer
+    k_min: 5
+    k_max_fraction: 0.5 # use up to 50% of data
+
+pot_analysis:
+  threshold_selection:
+    method: "quantile"     # "quantile" or "absolute"
+    u_min_quantile: 0.70
+    u_max_quantile: 0.98
+    n_thresholds: 50
+
+  gpd_fitting:
+    method: "mle"    # "mle" or "pwm"
+    default_threshold_quantile: 0.95
+
+dependence:
+  tail_dependence:
+    q_lower: 0.05
+    q_upper: 0.95
+    n_quantiles_profile: 20

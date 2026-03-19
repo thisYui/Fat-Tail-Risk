@@ -68,14 +68,20 @@ def fit_distribution(
 def compare_distributions(
     data: NDArray[np.float64],
     dist_names: list[str] | None = None,
+    include_stable: bool = False,
     **kwargs: dict[str, Any],
 ) -> pd.DataFrame:
     """Fit multiple distributions to data and compare them by AIC/BIC.
 
     Args:
         data: Observed data samples.
-        dist_names: List of distribution names to fit. Defaults to all
-            registered distributions: ``["normal", "student_t", "stable"]``.
+        dist_names: List of distribution names to fit. Defaults to
+            ``["normal", "student_t"]``. Pass explicitly to include
+            ``"stable"``, or set ``include_stable=True``.
+        include_stable: If True, adds ``"stable"`` to the default list.
+            Ignored if ``dist_names`` is provided explicitly.
+            Warning: stable fitting is computationally expensive (minutes
+            per dataset for n > 1000). Use with caution on large datasets.
         **kwargs: Per-distribution keyword arguments. Keys are distribution
             names and values are dicts of kwargs, e.g.
             ``{"student_t": {"fix_loc": 0.0}}``.
@@ -94,7 +100,9 @@ def compare_distributions(
     data = np.asarray(data, dtype=np.float64).flatten()
 
     if dist_names is None:
-        dist_names = list(_DISTRIBUTION_REGISTRY.keys())
+        dist_names = ["normal", "student_t"]
+        if include_stable:
+            dist_names.append("stable")
 
     results = []
     for name in dist_names:

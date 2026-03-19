@@ -1,0 +1,39 @@
+# configuration for monte carlo simulation and uncertainty quantification
+monte_carlo:
+  n_simulations: 1000
+  n_samples_per_simulation: 1000
+  seed: 42
+  
+  tail_probabilities:
+    - 0.90
+    - 0.95
+    - 0.99
+    - 0.999
+
+bootstrap:
+  n_bootstrap: 500
+  confidence_level: 0.95
+  method: "bca"  # "percentile", "basic", or "bca"
+
+stochastic_processes:
+  n_paths: 1000
+  n_steps: 252
+  dt: 0.003968253968253968 # 1/252
+  initial_value: 100.0
+  seed: 42
+  
+  gbm:
+    mu: 0.05
+    sigma: 0.20
+    
+  gbm_t:
+    mu: 0.05
+    sigma: 0.20
+    df: 4.0
+    
+  jump_diffusion:
+    mu: 0.05
+    sigma: 0.15
+    jump_intensity: 5.0
+    jump_mean: -0.05
+    jump_std: 0.10

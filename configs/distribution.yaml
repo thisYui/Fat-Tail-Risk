@@ -1,0 +1,27 @@
+# configuration for distribution fitting and comparison
+distributions_to_fit:
+  - normal
+  - student_t
+  - stable
+
+fitting_parameters:
+  # parameters specifically for student_t
+  student_t:
+    fix_loc: null  # set to 0.0 if data is demeaned
+  
+  # parameters specifically for stable
+  stable:
+    fix_beta: null # set to 0.0 to enforce symmetry
+
+comparison:
+  criterion: "aic" # "aic" or "bic"
+
+goodness_of_fit:
+  alpha_level: 0.05
+  tests:
+    - ks
+    - ad
+    - cvm
+    - jarque_bera
+    - dagostino_pearson
+    - shapiro_wilk  # only runs if n <= 5000
