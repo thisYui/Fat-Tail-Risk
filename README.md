@@ -1,215 +1,131 @@
-# Fat-Tail Risk Modeling & Extreme Value Analysis
+# Fat-Tail Modeling: Extreme Value Analysis & Heavy-Tailed Distributions
 
-## 1. Overview
+## Overview
+This project studies **fat-tailed behavior in data** and builds a **statistical modeling pipeline** to understand and model extreme events. It focuses on how classical assumptions (e.g., Gaussian distributions) fail in the tails and how alternative approaches provide better fit and reliability.
 
-This project explores **fat-tail risk in financial returns** using advanced statistical modeling techniques.
-Instead of assuming normality, it focuses on **heavy-tailed distributions**, **Extreme Value Theory (EVT)**, and **copula-based dependence modeling** to better capture tail risk.
-
-The pipeline covers the full lifecycle:
-
-```
-Simulation → Distribution Fitting → Tail Analysis → EVT → Copula → Portfolio Risk → Stress Testing → Backtesting
-```
+The work is positioned as **applied statistical data science**, not domain-specific finance.
 
 ---
 
-## 2. Objectives
+## Problem
+Many real-world datasets exhibit **heavy tails**, meaning extreme values occur more frequently than predicted by normal distributions. This leads to:
 
-* Model **non-Gaussian financial returns**
-* Estimate tail risk using EVT (Peaks Over Threshold)
-* Compare risk metrics:
+- Systematic underestimation of extreme events  
+- Poor model performance in tail regions  
+- Invalid assumptions in standard statistical models  
 
-  * Value at Risk (VaR)
-  * Conditional Value at Risk (CVaR)
-* Capture dependency structure using copulas
-* Validate models via backtesting
-* Analyze robustness under stress scenarios
+Key questions:
+- How can we detect fat-tailed behavior?
+- Which distributions model it better?
+- How can we model extremes explicitly?
+- How do we validate models in the tail?
 
 ---
 
-## 3. Project Structure
+## Approach
 
-```
-Fat-Tail-Risk/
-│
-├── data/                     # Simulated & processed datasets
-│
-├── notebooks/                # Research narrative (main entry point)
-│   ├── 01_simulation.ipynb
-│   ├── 02_eda.ipynb
-│   ├── 03_distribution_fitting.ipynb
-│   ├── 04_tail_analysis.ipynb
-│   ├── 05_evt_model.ipynb
-│   ├── 06_copula.ipynb
-│   ├── 07_portfolio_risk.ipynb
-│   ├── 08_stress_testing.ipynb
-│   ├── 09_backtesting.ipynb
-│   └── 10_reporting.ipynb
-│
-├── src/
-│   ├── models/               # Statistical models
-│   │   ├── var_models.py
-│   │   ├── cvar_models.py
-│   │   ├── evt.py
-│   │   ├── copula.py
-│   │   └── distribution.py
-│   │
-│   ├── simulation/           # Data generation
-│   ├── features/             # Feature engineering
-│   ├── risk/                 # Risk metrics & backtesting
-│   ├── visualization/        # Plots & reporting
-│   └── pipelines/            # End-to-end workflows
-│
-├── configs/                  # Parameter configuration
-├── experiments/              # Experiment tracking (metrics + artifacts)
-├── scripts/                  # CLI entrypoints
-├── tests/                    # Unit tests for core logic
-│
+The project follows a structured modeling pipeline:
+
+1. **Data Generation**  
+   - Create synthetic datasets (Gaussian vs heavy-tailed)  
+   - Control mean/variance to isolate tail effects  
+
+2. **Exploratory Analysis**  
+   - Histogram (log scale)  
+   - QQ plots  
+   - Skewness, kurtosis  
+
+3. **Distribution Modeling**  
+   - Fit Normal, Student-t, etc.  
+   - Evaluate using likelihood and goodness-of-fit  
+
+4. **Tail Analysis**  
+   - Tail index estimation  
+   - Extreme quantile behavior  
+
+5. **Extreme Value Theory (EVT)**  
+   - Peaks-over-threshold (POT)  
+   - Generalized Pareto Distribution (GPD)  
+
+6. **Dependence Modeling**  
+   - Copula methods  
+   - Tail dependence  
+
+7. **Validation**  
+   - Goodness-of-fit tests  
+   - Tail-focused QQ plots  
+   - Coverage analysis  
+
+8. **Robustness**  
+   - Sensitivity to parameters  
+   - Stability under extreme scenarios  
+
+---
+
+## Project Structure
+
+
+.
+├── notebooks/ # Analytical workflow (storytelling)
+├── src/ # Core statistical modules
+├── configs/ # Experiment configurations
+├── scripts/ # Reproducible execution
 └── README.md
+
+
+### src/
+
+data/ # Data generation
+distributions/ # Distribution models & fitting
+tails/ # Tail analysis tools
+extreme_value/ # EVT (GPD, POT)
+dependence/ # Copula & tail dependence
+validation/ # Statistical tests
+simulation/ # Monte Carlo processes
+evaluation/ # Metrics & uncertainty
+pipelines/ # End-to-end workflows
+utils/ # Helpers
+
+
+---
+
+## Methodology
+
+- **Controlled experiments**: isolate tail effects via synthetic data  
+- **Model comparison**: evaluate multiple distributions  
+- **Tail-focused modeling**: prioritize extreme behavior over global fit  
+- **Validation-first mindset**: ensure models perform in the tail  
+
+---
+
+## Reproducibility
+
+Experiments are configuration-driven:
+
+```bash
+python scripts/run_modeling.py --config configs/distribution.yaml
 ```
+This ensures:
 
----
+- Consistent results 
+- Easy parameter tuning 
+- Separation of logic and experiments
 
-## 4. Key Concepts
+## Key Insights
 
-### 4.1 Fat-Tailed Distributions
+- Gaussian models underestimate extreme events 
+- Heavy-tailed distributions better capture real-world behavior
+- EVT provides a principled way to model extremes 
+- Tail validation is critical and often overlooked
 
-Financial returns often exhibit:
+## Positioning
 
-* heavy tails
-* skewness
-* excess kurtosis
+This project demonstrates:
 
-We compare:
+> Applied statistical modeling for extreme events under heavy-tailed distributions
 
-* Normal
-* Student-t
-* Pareto
-* (optional) α-stable distributions
+It emphasizes:
 
----
-
-### 4.2 Extreme Value Theory (EVT)
-
-We use **Peaks Over Threshold (POT)** to model tail behavior:
-
-* Tail modeled with Generalized Pareto Distribution (GPD)
-* Threshold selection is critical
-
----
-
-### 4.3 Risk Metrics
-
-* **VaR (Value at Risk)**: quantile-based risk measure
-* **CVaR (Expected Shortfall)**: expected loss beyond VaR
-
-These are implemented independently to highlight their differences.
-
----
-
-### 4.4 Copula Modeling
-
-Captures **dependency structure** between assets beyond linear correlation:
-
-* Gaussian Copula
-* t-Copula
-
----
-
-### 4.5 Backtesting
-
-Model validation includes:
-
-* Violation rate analysis
-* Kupiec test
-* Conditional coverage tests
-
----
-
-## 5. How to Run
-
-### 5.1 Install dependencies
-
-```
-pip install -r requirements.txt
-```
-
----
-
-### 5.2 Run notebooks (recommended)
-
-Start with:
-
-```
-notebooks/01_simulation.ipynb
-```
-
-and follow the pipeline sequentially.
-
----
-
-### 5.3 Run via CLI (optional)
-
-```
-python scripts/run_full_pipeline.py --config configs/base.yaml
-```
-
----
-
-## 6. Experiment Tracking
-
-Each experiment is stored in:
-
-```
-experiments/exp_xxx/
-```
-
-Includes:
-
-* configuration
-* metrics (VaR, CVaR, violation rate)
-* generated plots
-
-This ensures reproducibility and avoids selective reporting.
-
----
-
-## 7. Testing
-
-Basic unit tests are provided for:
-
-* VaR monotonicity
-* CVaR ≥ VaR
-* EVT consistency
-
-Run:
-
-```
-pytest tests/
-```
-
----
-
-## 8. Highlights
-
-* End-to-end **tail risk modeling pipeline**
-* Clear separation between:
-
-  * research (notebooks)
-  * logic (src)
-  * experiments
-* Focus on **statistical rigor**, not just ML
-* Designed for **reproducible research**
-
----
-
-## 9. Future Improvements
-
-* Multivariate EVT extensions
-* Dynamic copula models
-* Real market data integration
-* Bayesian tail estimation
-
----
-
-## 10. Author
+- Strong statistical reasoning 
+- Rigorous validation 
+- Clean system design
